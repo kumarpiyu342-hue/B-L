@@ -1,0 +1,514 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 4.1: Global Safety Net — deny all by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Pillar 3: Global Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function isValidCustomerCode(code) {
+      return code is string && code.size() >= 3 && code.size() <= 24 && code.matches('^[A-Z0-9-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isShopOwner(shopId) {
+      return isSignedIn() && request.auth.uid == shopId;
+    }
+
+    function ownsShopDoc(shopId) {
+      return isShopOwner(shopId) &&
+        exists(/databases/$(database)/documents/shops/$(shopId)) &&
+        get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
+    }
+
+    function isNonNegNum(val) {
+      return (val is int || val is float) && val >= 0;
+    }
+
+    function isPosNum(val) {
+      return (val is int || val is float) && val > 0;
+    }
+
+    function isServerNow(ts) {
+      return ts is timestamp &&
+        ts >= request.time - duration.value(5, 'm') &&
+        ts <= request.time + duration.value(5, 'm');
+    }
+
+    // --- Pillar 2: Validation Blueprints ---
+    function isValidShop(data) {
+      return data.keys().hasAll([
+          'ownerId', 'shopName', 'category', 'ownerName', 'phone', 'address', 'gstin',
+          'currencySymbol', 'taxEnabled', 'defaultTaxRate', 'invoicePrefix', 'receiptFooter',
+          'coinName', 'coinsPerHundred', 'coinValueInInr', 'maxRedeemPercent',
+          'welcomeBonusCoins', 'repeatBonusCoins', 'totalBills', 'totalRevenue',
+          'lastBillSeq', 'lastCustomerSeq', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'shopName', 'category', 'ownerName', 'phone', 'address', 'gstin',
+          'currencySymbol', 'taxEnabled', 'defaultTaxRate', 'invoicePrefix', 'receiptFooter',
+          'coinName', 'coinsPerHundred', 'coinValueInInr', 'maxRedeemPercent',
+          'welcomeBonusCoins', 'repeatBonusCoins', 'totalBills', 'totalRevenue',
+          'lastBillSeq', 'lastCustomerSeq', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.shopName is string && data.shopName.size() >= 2 && data.shopName.size() <= 80 &&
+        data.category in [
+          'Kirana & Grocery', 'Apparel & Boutique', 'Electronics & Mobile',
+          'Pharmacy & Wellness', 'Cafe & Bakery', 'Hardware & Auto', 'General Retail'
+        ] &&
+        data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+        data.phone is string && data.phone.size() <= 20 &&
+        data.address is string && data.address.size() <= 200 &&
+        data.gstin is string && data.gstin.size() <= 20 &&
+        data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 5 &&
+        data.taxEnabled is bool &&
+        isNonNegNum(data.defaultTaxRate) && data.defaultTaxRate <= 28 &&
+        data.invoicePrefix is string && data.invoicePrefix.size() >= 1 && data.invoicePrefix.size() <= 10 &&
+        data.invoicePrefix.matches('^[A-Z0-9-]+$') &&
+        data.receiptFooter is string && data.receiptFooter.size() <= 160 &&
+        data.coinName is string && data.coinName.size() >= 2 && data.coinName.size() <= 30 &&
+        isNonNegNum(data.coinsPerHundred) && data.coinsPerHundred <= 100 &&
+        isPosNum(data.coinValueInInr) && data.coinValueInInr <= 50 &&
+        isNonNegNum(data.maxRedeemPercent) && data.maxRedeemPercent <= 100 &&
+        isNonNegNum(data.welcomeBonusCoins) && data.welcomeBonusCoins <= 500 &&
+        isNonNegNum(data.repeatBonusCoins) && data.repeatBonusCoins <= 500 &&
+        isNonNegNum(data.totalBills) &&
+        isNonNegNum(data.totalRevenue) &&
+        isNonNegNum(data.lastBillSeq) &&
+        isNonNegNum(data.lastCustomerSeq) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCatalogItem(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'sku', 'category', 'unit', 'price', 'taxRate',
+          'stockQuantity', 'lowStockThreshold', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'name', 'sku', 'category', 'unit', 'price', 'taxRate',
+          'stockQuantity', 'lowStockThreshold', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.sku is string && data.sku.size() <= 32 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+        data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 16 &&
+        isNonNegNum(data.price) && data.price <= 10000000 &&
+        isNonNegNum(data.taxRate) && data.taxRate <= 28 &&
+        isNonNegNum(data.stockQuantity) && data.stockQuantity <= 1000000 &&
+        isNonNegNum(data.lowStockThreshold) && data.lowStockThreshold <= 100000 &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLoyaltyOffer(data) {
+      return data.keys().hasAll([
+          'ownerId', 'title', 'description', 'coinsRequired', 'discountValue',
+          'minBillAmount', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'title', 'description', 'coinsRequired', 'discountValue',
+          'minBillAmount', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 80 &&
+        data.description is string && data.description.size() <= 160 &&
+        isPosNum(data.coinsRequired) && data.coinsRequired <= 100000 &&
+        isPosNum(data.discountValue) && data.discountValue <= 100000 &&
+        isNonNegNum(data.minBillAmount) && data.minBillAmount <= 1000000 &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll([
+          'ownerId', 'customerCode', 'name', 'phone', 'notes',
+          'visitCount', 'billCount', 'totalSpent', 'coinBalance',
+          'totalCoinsEarned', 'totalCoinsRedeemed', 'firstVisitAt',
+          'lastVisitAt', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'customerCode', 'name', 'phone', 'notes',
+          'visitCount', 'billCount', 'totalSpent', 'coinBalance',
+          'totalCoinsEarned', 'totalCoinsRedeemed', 'firstVisitAt',
+          'lastVisitAt', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        isValidCustomerCode(data.customerCode) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 20 &&
+        data.phone.matches('^[0-9+ \\t-]+$') &&
+        data.notes is string && data.notes.size() <= 200 &&
+        isNonNegNum(data.visitCount) &&
+        isNonNegNum(data.billCount) &&
+        isNonNegNum(data.totalSpent) &&
+        isNonNegNum(data.coinBalance) &&
+        isNonNegNum(data.totalCoinsEarned) &&
+        isNonNegNum(data.totalCoinsRedeemed) &&
+        data.firstVisitAt is timestamp &&
+        data.lastVisitAt is timestamp &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLoyaltyCard(data, code) {
+      return data.keys().hasAll([
+          'ownerId', 'customerCode', 'displayName', 'shopName', 'coinName',
+          'currencySymbol', 'coinsPerHundred', 'coinValueInInr', 'coinBalance',
+          'totalCoinsEarned', 'totalCoinsRedeemed', 'visitCount', 'billCount',
+          'offersSummary', 'recentBillsSummary', 'lastVisitAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'customerCode', 'displayName', 'shopName', 'coinName',
+          'currencySymbol', 'coinsPerHundred', 'coinValueInInr', 'coinBalance',
+          'totalCoinsEarned', 'totalCoinsRedeemed', 'visitCount', 'billCount',
+          'offersSummary', 'recentBillsSummary', 'lastVisitAt', 'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        isValidCustomerCode(data.customerCode) &&
+        data.customerCode == code &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+        data.shopName is string && data.shopName.size() >= 2 && data.shopName.size() <= 80 &&
+        data.coinName is string && data.coinName.size() >= 2 && data.coinName.size() <= 30 &&
+        data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 5 &&
+        isNonNegNum(data.coinsPerHundred) && data.coinsPerHundred <= 100 &&
+        isPosNum(data.coinValueInInr) && data.coinValueInInr <= 50 &&
+        isNonNegNum(data.coinBalance) &&
+        isNonNegNum(data.totalCoinsEarned) &&
+        isNonNegNum(data.totalCoinsRedeemed) &&
+        isNonNegNum(data.visitCount) &&
+        isNonNegNum(data.billCount) &&
+        data.offersSummary is list && data.offersSummary.size() <= 8 &&
+        (data.offersSummary.size() == 0 || (data.offersSummary[0] is string && data.offersSummary[0].size() <= 160)) &&
+        data.recentBillsSummary is list && data.recentBillsSummary.size() <= 5 &&
+        (data.recentBillsSummary.size() == 0 || (data.recentBillsSummary[0] is string && data.recentBillsSummary[0].size() <= 160)) &&
+        data.lastVisitAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBill(data) {
+      return data.keys().hasAll([
+          'ownerId', 'billNumber', 'customerId', 'customerCode', 'customerName', 'customerPhone',
+          'isRepeatVisit', 'visitNumber', 'itemCount', 'subtotal', 'taxAmount',
+          'discountAmount', 'coinsRedeemed', 'coinDiscount', 'appliedOfferTitle',
+          'coinsEarned', 'totalAmount', 'paymentMode', 'status', 'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'billNumber', 'customerId', 'customerCode', 'customerName', 'customerPhone',
+          'isRepeatVisit', 'visitNumber', 'itemCount', 'subtotal', 'taxAmount',
+          'discountAmount', 'coinsRedeemed', 'coinDiscount', 'appliedOfferTitle',
+          'coinsEarned', 'totalAmount', 'paymentMode', 'status', 'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.billNumber is string && data.billNumber.size() >= 2 && data.billNumber.size() <= 32 &&
+        isValidId(data.customerId) &&
+        isValidCustomerCode(data.customerCode) &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 80 &&
+        data.customerPhone is string && data.customerPhone.size() >= 6 && data.customerPhone.size() <= 20 &&
+        data.isRepeatVisit is bool &&
+        isPosNum(data.visitNumber) &&
+        isPosNum(data.itemCount) && data.itemCount <= 100 &&
+        isNonNegNum(data.subtotal) &&
+        isNonNegNum(data.taxAmount) &&
+        isNonNegNum(data.discountAmount) &&
+        isNonNegNum(data.coinsRedeemed) &&
+        isNonNegNum(data.coinDiscount) &&
+        data.appliedOfferTitle is string && data.appliedOfferTitle.size() <= 80 &&
+        isNonNegNum(data.coinsEarned) &&
+        isNonNegNum(data.totalAmount) &&
+        data.paymentMode in ['Cash', 'UPI', 'Card', 'Credit'] &&
+        data.status in ['paid', 'pending', 'void'] &&
+        data.notes is string && data.notes.size() <= 200 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBillLineItem(data, billId) {
+      return data.keys().hasAll([
+          'ownerId', 'billId', 'itemId', 'name', 'unit', 'qty', 'unitPrice',
+          'taxRate', 'taxAmount', 'lineTotal', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'billId', 'itemId', 'name', 'unit', 'qty', 'unitPrice',
+          'taxRate', 'taxAmount', 'lineTotal', 'createdAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.billId) &&
+        data.billId == billId &&
+        data.itemId is string && data.itemId.size() <= 128 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 16 &&
+        isPosNum(data.qty) && data.qty <= 100000 &&
+        isNonNegNum(data.unitPrice) && data.unitPrice <= 10000000 &&
+        isNonNegNum(data.taxRate) && data.taxRate <= 28 &&
+        isNonNegNum(data.taxAmount) &&
+        isNonNegNum(data.lineTotal) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidCoinTransaction(data) {
+      return data.keys().hasAll([
+          'ownerId', 'customerId', 'customerName', 'billId', 'billNumber',
+          'type', 'coinsDelta', 'balanceAfter', 'note', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'customerId', 'customerName', 'billId', 'billNumber',
+          'type', 'coinsDelta', 'balanceAfter', 'note', 'createdAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        isValidId(data.customerId) &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 80 &&
+        data.billId is string && data.billId.size() <= 128 &&
+        data.billNumber is string && data.billNumber.size() <= 32 &&
+        data.type in ['earn', 'redeem', 'welcome_bonus', 'repeat_bonus', 'manual_add', 'manual_deduct'] &&
+        (data.coinsDelta is int || data.coinsDelta is float) &&
+        isNonNegNum(data.balanceAfter) &&
+        data.note is string && data.note.size() <= 160 &&
+        data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Shop Profile (/shops/{shopId})
+    match /shops/{shopId} {
+      allow get: if isValidId(shopId) && isShopOwner(shopId) && (resource == null || existing().ownerId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() &&
+        isValidId(shopId) &&
+        isShopOwner(shopId) &&
+        isValidShop(incoming()) &&
+        isServerNow(incoming().createdAt) &&
+        isServerNow(incoming().updatedAt);
+      allow update: if isVerified() &&
+        isValidId(shopId) &&
+        isValidShop(incoming()) &&
+        isShopOwner(shopId) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        isServerNow(incoming().updatedAt) && (
+          // Action 1: Update shop profile, billing settings, and loyalty rules
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'shopName', 'category', 'ownerName', 'phone', 'address', 'gstin',
+            'currencySymbol', 'taxEnabled', 'defaultTaxRate', 'invoicePrefix', 'receiptFooter',
+            'coinName', 'coinsPerHundred', 'coinValueInInr', 'maxRedeemPercent',
+            'welcomeBonusCoins', 'repeatBonusCoins', 'updatedAt'
+          ]) ||
+          // Action 2: Increment counters when issuing a bill or creating a customer
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'totalBills', 'totalRevenue', 'lastBillSeq', 'lastCustomerSeq', 'updatedAt'
+          ])
+        );
+      allow delete: if false;
+
+      // 2. Catalog & Inventory Items (/shops/{shopId}/items/{itemId})
+      match /items/{itemId} {
+        allow get: if isValidId(shopId) && isValidId(itemId) && ownsShopDoc(shopId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isShopOwner(shopId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerified() &&
+          isValidId(shopId) && isValidId(itemId) &&
+          isValidCatalogItem(incoming()) &&
+          isServerNow(incoming().createdAt) &&
+          isServerNow(incoming().updatedAt) &&
+          ownsShopDoc(shopId);
+        allow update: if isVerified() &&
+          isValidId(shopId) && isValidId(itemId) &&
+          isValidCatalogItem(incoming()) &&
+          ownsShopDoc(shopId) &&
+          existing().ownerId == request.auth.uid &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          isServerNow(incoming().updatedAt) && (
+            // Action 1: Full product edit by shopkeeper
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'sku', 'category', 'unit', 'price', 'taxRate',
+              'stockQuantity', 'lowStockThreshold', 'isActive', 'updatedAt'
+            ]) ||
+            // Action 2: Stock adjustment (restock or sale deduction)
+            incoming().diff(existing()).affectedKeys().hasOnly(['stockQuantity', 'updatedAt'])
+          );
+        allow delete: if isVerified() && isValidId(shopId) && isValidId(itemId) && ownsShopDoc(shopId) && existing().ownerId == request.auth.uid;
+      }
+
+      // 3. Loyalty Offers & Rewards (/shops/{shopId}/offers/{offerId})
+      match /offers/{offerId} {
+        allow get: if isValidId(shopId) && isValidId(offerId) && ownsShopDoc(shopId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isShopOwner(shopId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerified() &&
+          isValidId(shopId) && isValidId(offerId) &&
+          isValidLoyaltyOffer(incoming()) &&
+          isServerNow(incoming().createdAt) &&
+          isServerNow(incoming().updatedAt) &&
+          ownsShopDoc(shopId);
+        allow update: if isVerified() &&
+          isValidId(shopId) && isValidId(offerId) &&
+          isValidLoyaltyOffer(incoming()) &&
+          ownsShopDoc(shopId) &&
+          existing().ownerId == request.auth.uid &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          isServerNow(incoming().updatedAt) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'coinsRequired', 'discountValue', 'minBillAmount', 'isActive', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isValidId(shopId) && isValidId(offerId) && ownsShopDoc(shopId) && existing().ownerId == request.auth.uid;
+      }
+
+      // 4. Customers (/shops/{shopId}/customers/{customerId})
+      match /customers/{customerId} {
+        allow get: if isValidId(shopId) && isValidId(customerId) && ownsShopDoc(shopId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isShopOwner(shopId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerified() &&
+          isValidId(shopId) && isValidId(customerId) &&
+          isValidCustomer(incoming()) &&
+          isServerNow(incoming().createdAt) &&
+          isServerNow(incoming().updatedAt) &&
+          isServerNow(incoming().firstVisitAt) &&
+          isServerNow(incoming().lastVisitAt) &&
+          ownsShopDoc(shopId);
+        allow update: if isVerified() &&
+          isValidId(shopId) && isValidId(customerId) &&
+          isValidCustomer(incoming()) &&
+          ownsShopDoc(shopId) &&
+          existing().ownerId == request.auth.uid &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().customerCode == existing().customerCode &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().firstVisitAt == existing().firstVisitAt &&
+          isServerNow(incoming().updatedAt) && (
+            // Action 1: Edit customer details
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'notes', 'updatedAt']) ||
+            // Action 2: Record visit/bill + coin balance update
+            (isServerNow(incoming().lastVisitAt) &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'name', 'visitCount', 'billCount', 'totalSpent', 'coinBalance',
+                'totalCoinsEarned', 'totalCoinsRedeemed', 'lastVisitAt', 'updatedAt'
+              ])) ||
+            // Action 3: Manual coin balance adjustment
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'coinBalance', 'totalCoinsEarned', 'totalCoinsRedeemed', 'updatedAt'
+            ])
+          );
+        allow delete: if isVerified() && isValidId(shopId) && isValidId(customerId) && ownsShopDoc(shopId) && existing().ownerId == request.auth.uid;
+      }
+
+      // 5. Bills (/shops/{shopId}/bills/{billId})
+      match /bills/{billId} {
+        allow get: if isValidId(shopId) && isValidId(billId) && ownsShopDoc(shopId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isShopOwner(shopId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerified() &&
+          isValidId(shopId) && isValidId(billId) &&
+          isValidBill(incoming()) &&
+          isServerNow(incoming().createdAt) &&
+          isServerNow(incoming().updatedAt) &&
+          ownsShopDoc(shopId) &&
+          existsAfter(/databases/$(database)/documents/shops/$(shopId)/customers/$(incoming().customerId));
+        allow update: if isVerified() &&
+          isValidId(shopId) && isValidId(billId) &&
+          isValidBill(incoming()) &&
+          ownsShopDoc(shopId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().status != 'void' &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().customerId == existing().customerId &&
+          incoming().createdAt == existing().createdAt &&
+          isServerNow(incoming().updatedAt) && (
+            // Action 1: Mark pending credit bill as paid
+            (existing().status == 'pending' &&
+              incoming().status == 'paid' &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paymentMode', 'updatedAt'])) ||
+            // Action 2: Void an invoice (terminal state)
+            (incoming().status == 'void' &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+          );
+        allow delete: if false;
+
+        // 6. Bill Line Items (/shops/{shopId}/bills/{billId}/lineItems/{lineItemId})
+        match /lineItems/{lineItemId} {
+          allow get: if isValidId(shopId) && isValidId(billId) && isValidId(lineItemId) && ownsShopDoc(shopId) && (resource == null || existing().ownerId == request.auth.uid);
+          allow list: if isShopOwner(shopId) && resource.data.ownerId == request.auth.uid;
+          allow create: if isVerified() &&
+            isValidId(shopId) && isValidId(billId) && isValidId(lineItemId) &&
+            isValidBillLineItem(incoming(), billId) &&
+            isServerNow(incoming().createdAt) &&
+            ownsShopDoc(shopId) &&
+            existsAfter(/databases/$(database)/documents/shops/$(shopId)/bills/$(billId));
+          allow update: if false;
+          allow delete: if false;
+        }
+      }
+
+      // 7. Coin Transactions (/shops/{shopId}/coinTransactions/{txId})
+      match /coinTransactions/{txId} {
+        allow get: if isValidId(shopId) && isValidId(txId) && ownsShopDoc(shopId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isShopOwner(shopId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerified() &&
+          isValidId(shopId) && isValidId(txId) &&
+          isValidCoinTransaction(incoming()) &&
+          isServerNow(incoming().createdAt) &&
+          ownsShopDoc(shopId) &&
+          existsAfter(/databases/$(database)/documents/shops/$(shopId)/customers/$(incoming().customerId));
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    // 8. Zero-PII Public Loyalty Cards (/loyaltyCards/{customerCode})
+    // Customers can look up ONLY their own card by exact customerCode; listing is strictly forbidden.
+    match /loyaltyCards/{customerCode} {
+      allow get: if isValidCustomerCode(customerCode);
+      allow list: if false;
+      allow create: if isVerified() &&
+        isValidCustomerCode(customerCode) &&
+        isValidLoyaltyCard(incoming(), customerCode) &&
+        isServerNow(incoming().updatedAt) &&
+        existsAfter(/databases/$(database)/documents/shops/$(request.auth.uid));
+      allow update: if isVerified() &&
+        isValidCustomerCode(customerCode) &&
+        isValidLoyaltyCard(incoming(), customerCode) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().customerCode == existing().customerCode &&
+        isServerNow(incoming().updatedAt) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'shopName', 'coinName', 'currencySymbol',
+          'coinsPerHundred', 'coinValueInInr', 'coinBalance',
+          'totalCoinsEarned', 'totalCoinsRedeemed', 'visitCount', 'billCount',
+          'offersSummary', 'recentBillsSummary', 'lastVisitAt', 'updatedAt'
+        ]);
+      allow delete: if isVerified() && isValidCustomerCode(customerCode) && existing().ownerId == request.auth.uid;
+    }
+  }
+}

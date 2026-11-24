@@ -1,0 +1,736 @@
+{
+  "entities": {
+    "Shop": {
+      "title": "Shop",
+      "description": "Shopkeeper store profile, billing preferences, and coin loyalty rules.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the shopkeeper."
+        },
+        "shopName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Display name of the shop."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Kirana & Grocery",
+            "Apparel & Boutique",
+            "Electronics & Mobile",
+            "Pharmacy & Wellness",
+            "Cafe & Bakery",
+            "Hardware & Auto",
+            "General Retail"
+          ],
+          "description": "Type of retail business."
+        },
+        "ownerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Shopkeeper full name."
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Shop contact phone number."
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Shop address printed on bills."
+        },
+        "gstin": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Optional GSTIN or tax registration ID."
+        },
+        "currencySymbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5,
+          "description": "Currency symbol such as ₹."
+        },
+        "taxEnabled": {
+          "type": "boolean",
+          "description": "Whether tax/GST is enabled by default."
+        },
+        "defaultTaxRate": {
+          "type": "number",
+          "description": "Default tax percentage (0 to 28)."
+        },
+        "invoicePrefix": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10,
+          "pattern": "^[A-Z0-9\\-]+$",
+          "description": "Prefix used in generated bill numbers."
+        },
+        "receiptFooter": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Footer message printed on bills."
+        },
+        "coinName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 30,
+          "description": "Custom loyalty coin label."
+        },
+        "coinsPerHundred": {
+          "type": "number",
+          "description": "Coins earned per 100 currency units spent."
+        },
+        "coinValueInInr": {
+          "type": "number",
+          "description": "Discount value of 1 coin in currency units."
+        },
+        "maxRedeemPercent": {
+          "type": "number",
+          "description": "Maximum percentage of bill payable via coins."
+        },
+        "welcomeBonusCoins": {
+          "type": "number",
+          "description": "Bonus coins awarded on first customer bill."
+        },
+        "repeatBonusCoins": {
+          "type": "number",
+          "description": "Extra bonus coins awarded when a customer returns."
+        },
+        "totalBills": {
+          "type": "number",
+          "description": "Running count of bills issued."
+        },
+        "totalRevenue": {
+          "type": "number",
+          "description": "Running net revenue across non-void bills."
+        },
+        "lastBillSeq": {
+          "type": "number",
+          "description": "Monotonic sequence counter for bill numbers."
+        },
+        "lastCustomerSeq": {
+          "type": "number",
+          "description": "Monotonic sequence counter for customer IDs."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "shopName",
+        "category",
+        "ownerName",
+        "currencySymbol",
+        "taxEnabled",
+        "defaultTaxRate",
+        "invoicePrefix",
+        "coinName",
+        "coinsPerHundred",
+        "coinValueInInr",
+        "maxRedeemPercent",
+        "welcomeBonusCoins",
+        "repeatBonusCoins",
+        "totalBills",
+        "totalRevenue",
+        "lastBillSeq",
+        "lastCustomerSeq",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CatalogItem": {
+      "title": "CatalogItem",
+      "description": "Shop product with pricing, stock quantity, and low-stock alert threshold.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "sku": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "price": {
+          "type": "number"
+        },
+        "taxRate": {
+          "type": "number"
+        },
+        "stockQuantity": {
+          "type": "number"
+        },
+        "lowStockThreshold": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "category",
+        "unit",
+        "price",
+        "taxRate",
+        "stockQuantity",
+        "lowStockThreshold",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LoyaltyOffer": {
+      "title": "LoyaltyOffer",
+      "description": "Special reward or discount offer redeemable by customers using coins.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "coinsRequired": {
+          "type": "number"
+        },
+        "discountValue": {
+          "type": "number"
+        },
+        "minBillAmount": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "title",
+        "coinsRequired",
+        "discountValue",
+        "minBillAmount",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Shop customer profile tracking repeat visits, bill counts, spend, and loyalty coin balance.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 20,
+          "pattern": "^[0-9+\\-\\s]+$"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "visitCount": {
+          "type": "number"
+        },
+        "billCount": {
+          "type": "number"
+        },
+        "totalSpent": {
+          "type": "number"
+        },
+        "coinBalance": {
+          "type": "number"
+        },
+        "totalCoinsEarned": {
+          "type": "number"
+        },
+        "totalCoinsRedeemed": {
+          "type": "number"
+        },
+        "firstVisitAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastVisitAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "customerCode",
+        "name",
+        "phone",
+        "visitCount",
+        "billCount",
+        "totalSpent",
+        "coinBalance",
+        "totalCoinsEarned",
+        "totalCoinsRedeemed",
+        "firstVisitAt",
+        "lastVisitAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LoyaltyCard": {
+      "title": "LoyaltyCard",
+      "description": "Zero-PII public lookup card keyed by Customer ID so customers can check their points and offers.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "shopName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "coinName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 30
+        },
+        "currencySymbol": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "coinsPerHundred": {
+          "type": "number"
+        },
+        "coinValueInInr": {
+          "type": "number"
+        },
+        "coinBalance": {
+          "type": "number"
+        },
+        "totalCoinsEarned": {
+          "type": "number"
+        },
+        "totalCoinsRedeemed": {
+          "type": "number"
+        },
+        "visitCount": {
+          "type": "number"
+        },
+        "billCount": {
+          "type": "number"
+        },
+        "offersSummary": {
+          "type": "array",
+          "description": "Bounded list (max 8) of active offer strings."
+        },
+        "recentBillsSummary": {
+          "type": "array",
+          "description": "Bounded list (max 5) of recent non-PII bill summaries."
+        },
+        "lastVisitAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "customerCode",
+        "displayName",
+        "shopName",
+        "coinName",
+        "currencySymbol",
+        "coinsPerHundred",
+        "coinValueInInr",
+        "coinBalance",
+        "totalCoinsEarned",
+        "totalCoinsRedeemed",
+        "visitCount",
+        "billCount",
+        "offersSummary",
+        "recentBillsSummary",
+        "lastVisitAt",
+        "updatedAt"
+      ]
+    },
+    "Bill": {
+      "title": "Bill",
+      "description": "Customer invoice header with totals, payment mode, repeat-visit marker, and coin summary.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "billNumber": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 24
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "customerPhone": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 20
+        },
+        "isRepeatVisit": {
+          "type": "boolean"
+        },
+        "visitNumber": {
+          "type": "number"
+        },
+        "itemCount": {
+          "type": "number"
+        },
+        "subtotal": {
+          "type": "number"
+        },
+        "taxAmount": {
+          "type": "number"
+        },
+        "discountAmount": {
+          "type": "number"
+        },
+        "coinsRedeemed": {
+          "type": "number"
+        },
+        "coinDiscount": {
+          "type": "number"
+        },
+        "appliedOfferTitle": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "coinsEarned": {
+          "type": "number"
+        },
+        "totalAmount": {
+          "type": "number"
+        },
+        "paymentMode": {
+          "type": "string",
+          "enum": ["Cash", "UPI", "Card", "Credit"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["paid", "pending", "void"]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "billNumber",
+        "customerId",
+        "customerCode",
+        "customerName",
+        "customerPhone",
+        "isRepeatVisit",
+        "visitNumber",
+        "itemCount",
+        "subtotal",
+        "taxAmount",
+        "discountAmount",
+        "coinsRedeemed",
+        "coinDiscount",
+        "coinsEarned",
+        "totalAmount",
+        "paymentMode",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BillLineItem": {
+      "title": "BillLineItem",
+      "description": "Individual product/service line item belonging to a bill.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "billId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "itemId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "qty": {
+          "type": "number"
+        },
+        "unitPrice": {
+          "type": "number"
+        },
+        "taxRate": {
+          "type": "number"
+        },
+        "taxAmount": {
+          "type": "number"
+        },
+        "lineTotal": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "billId",
+        "name",
+        "unit",
+        "qty",
+        "unitPrice",
+        "taxRate",
+        "taxAmount",
+        "lineTotal",
+        "createdAt"
+      ]
+    },
+    "CoinTransaction": {
+      "title": "CoinTransaction",
+      "description": "Loyalty coin earn, redeem, bonus, or manual adjustment ledger entry.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "billId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "billNumber": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "earn",
+            "redeem",
+            "welcome_bonus",
+            "repeat_bonus",
+            "manual_add",
+            "manual_deduct"
+          ]
+        },
+        "coinsDelta": {
+          "type": "number"
+        },
+        "balanceAfter": {
+          "type": "number"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "customerId",
+        "customerName",
+        "type",
+        "coinsDelta",
+        "balanceAfter",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/shops/{shopId}": {
+      "schema": { "$ref": "#/entities/Shop" },
+      "description": "Shopkeeper store profile and loyalty configuration keyed by shopkeeper UID."
+    },
+    "/shops/{shopId}/items/{itemId}": {
+      "schema": { "$ref": "#/entities/CatalogItem" },
+      "description": "Shop inventory products with stock levels and low-stock thresholds."
+    },
+    "/shops/{shopId}/offers/{offerId}": {
+      "schema": { "$ref": "#/entities/LoyaltyOffer" },
+      "description": "Custom coin loyalty offers and rewards created by the shopkeeper."
+    },
+    "/shops/{shopId}/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customers belonging to the shop with visit counts, bill totals, and coin balance."
+    },
+    "/shops/{shopId}/bills/{billId}": {
+      "schema": { "$ref": "#/entities/Bill" },
+      "description": "Invoices generated by the shopkeeper."
+    },
+    "/shops/{shopId}/bills/{billId}/lineItems/{lineItemId}": {
+      "schema": { "$ref": "#/entities/BillLineItem" },
+      "description": "Line items for each bill."
+    },
+    "/shops/{shopId}/coinTransactions/{txId}": {
+      "schema": { "$ref": "#/entities/CoinTransaction" },
+      "description": "Audit ledger of loyalty coin movements."
+    },
+    "/loyaltyCards/{customerCode}": {
+      "schema": { "$ref": "#/entities/LoyaltyCard" },
+      "description": "Zero-PII customer loyalty card lookup by unique Customer ID."
+    }
+  }
+}
